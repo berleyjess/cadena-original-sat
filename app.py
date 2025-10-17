@@ -26,7 +26,10 @@ def cadena_original():
         transform = etree.XSLT(xslt_doc)
         cadena = str(transform(xml_doc))
 
-        return Response(cadena, mimetype="text/plain")
+        return Response("Error en el sat!" + cadena, mimetype="text/plain")
+    except etree.XMLSyntaxError as e:
+        logger.error(f"❌ Error de sintaxis XML: {str(e)}")
+        return Response(f"Error: XML mal formado - {str(e)}", status=400, mimetype="text/plain")
 
     except Exception as e:
         return Response("Error: " + str(e), status=500, mimetype="text/plain")
