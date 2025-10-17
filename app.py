@@ -1,46 +1,69 @@
 from flask import Flask, request, Response
 from lxml import etree
 import requests
-import os
+import logging
 
+# Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
 XSLT_URL = "https://www.sat.gob.mx/sitio_internet/cfd/4/cadenaoriginal_4_0/cadenaoriginal_4_0.xslt"
-LOCAL_XSLT = "/tmp/cadenaoriginal_4_0.xslt"
+
+# Cache del XSLT en MEMORIA (no en archivo)
+xslt_cache = None
 
 def get_xslt():
-    # Guarda una copia local en /tmp (permite más velocidad y evita fallas de red)
-    if not os.path.exists(LOCAL_XSLT):
-        xslt_data = requests.get(XSLT_URL).content
-        with open(LOCAL_XSLT, "wb") as f:
-            f.write(xslt_data)
-    return etree.parse(LOCAL_XSLT)
+    global xslt_cache
+    try:
+        if xslt_cache is None:
+            logger.info("📥 Descargando XSLT desde SAT...")
+            response = requests.get(XSLT_URL, timeout=30)
+            response.raise_for_status()
+            
+            logger.info("🔧 Parseando XSLT...")
+            xslt_cache = etree.fromstring(response.content)
+            logger.info("✅ XSLT cargado en memoria")
+        
+        return xslt_cache
+        
+    except Exception as e:
+        logger.error(f"❌ Error cargando XSLT: {str(e)}")
+        raise
 
 @app.route("/cadena_original", methods=["POST"])
 def cadena_original():
     try:
-        xml_data = request.data
-        logger.info(f"xml: {str(xml_data)}")
-        xml_doc = etree.fromstring(xml_data)
+        logger.info("📥 Recibiendo petición...")
+        
+        # Parsear XML
+        xml_doc = etree.fromstring(request.data)
+        logger.info("✅ XML parseado")
+        
+        # Obtener XSLT
         xslt_doc = get_xslt()
+        
+        # Crear transformador y aplicar
         transform = etree.XSLT(xslt_doc)
         cadena = str(transform(xml_doc))
-        logger.info(f"Enviando respuesta")
-        return Response("Error en el sat!" + cadena, mimetype="text/plain")
+        
+        logger.info(f"✅ Cadena generada: {len(cadena)} caracteres")
+        return Response(cadena.strip(), mimetype="text/plain")
+
     except etree.XMLSyntaxError as e:
         logger.error(f"❌ Error de sintaxis XML: {str(e)}")
-        return Response(f"Error: XML mal formado - {str(e)}", status=400, mimetype="text/plain")
+        return Response(f"Error XML: {str(e)}", status=400, mimetype="text/plain")
 
     except Exception as e:
-        return Response("Error: " + str(e), status=500, mimetype="text/plain")
+        logger.error(f"❌ Error general: {str(e)}")
+        return Response(f"Error: {str(e)}", status=500, mimetype="text/plain")
 
-@app.route("/")
-def home():
-    return "Servicio XSLT SAT activo ✅"
+@app.route("/health", methods=["GET"])
+def health():
+    return "✅ Servicio activo"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
+    logger.info(f"🚀 Iniciando servidor en puerto {port}")
     app.run(host="0.0.0.0", port=port)
