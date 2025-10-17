@@ -4,7 +4,7 @@ import requests
 
 app = Flask(__name__)
 
-@app.route("/cadena_original", methods=["POST"])
+"""@app.route("/cadena_original", methods=["POST"])
 def cadena_original():
     try:
         xml_data = request.data
@@ -17,6 +17,28 @@ def cadena_original():
         cadena = str(transform(xml_doc))
 
         return Response(cadena, mimetype="text/plain")
+
+    except Exception as e:
+        return Response("Error: " + str(e), status=500, mimetype="text/plain")"""
+        
+@app.route("/cadena_original", methods=["POST"])
+def cadena_original():
+    try:
+        xml_data = request.data
+        xslt_url = "https://www.sat.gob.mx/sitio_internet/cfd/4/cadenaoriginal_4_0/cadenaoriginal_4_0.xslt"
+
+        with PySaxonProcessor(license=False) as proc:
+            # Carga el XSLT desde la URL
+            xslt_proc = proc.new_xslt3_processor()
+            xslt_executable = xslt_proc.compile_stylesheet(stylesheet_text=requests.get(xslt_url).content)
+
+            # Carga el XML desde los datos de la solicitud
+            xml_doc = proc.parse_xml(xml_text=xml_data.decode('utf-8'))
+
+            # Realiza la transformación
+            cadena = xslt_executable.transform_to_string(xdm_node=xml_doc)
+
+            return Response(cadena, mimetype="text/plain")
 
     except Exception as e:
         return Response("Error: " + str(e), status=500, mimetype="text/plain")
