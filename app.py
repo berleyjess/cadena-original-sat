@@ -30,7 +30,7 @@ def cadena_original():
 
         with PySaxonProcessor(license=False) as proc:
             # Carga el XSLT desde la URL
-            xslt_proc = proc.new_xslt3_processor()
+            xslt_proc = proc.new_xslt30_processor()
             xslt_executable = xslt_proc.compile_stylesheet(stylesheet_text=requests.get(xslt_url).content)
 
             # Carga el XML desde los datos de la solicitud
