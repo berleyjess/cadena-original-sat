@@ -3,6 +3,9 @@ from lxml import etree
 import requests
 import os
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 
 XSLT_URL = "https://www.sat.gob.mx/sitio_internet/cfd/4/cadenaoriginal_4_0/cadenaoriginal_4_0.xslt"
@@ -20,12 +23,12 @@ def get_xslt():
 def cadena_original():
     try:
         xml_data = request.data
+        logger.info(f"xml: {str(xml_data)}")
         xml_doc = etree.fromstring(xml_data)
-
         xslt_doc = get_xslt()
         transform = etree.XSLT(xslt_doc)
         cadena = str(transform(xml_doc))
-
+        logger.info(f"Enviando respuesta")
         return Response("Error en el sat!" + cadena, mimetype="text/plain")
     except etree.XMLSyntaxError as e:
         logger.error(f"❌ Error de sintaxis XML: {str(e)}")
