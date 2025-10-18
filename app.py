@@ -55,11 +55,10 @@ def cadena_original_local():
             # Cargar desde archivo local
             with open(xslt_path, 'r', encoding='utf-8') as f:
                 xslt_content = f.read()
-            
-            xslt_executable = xslt_proc.compile_stylesheet(stylesheet_text=xslt_content)
+            xslt_executable = xslt_proc.compile_stylesheet(stylesheet_file=xslt_path)
+            #xslt_executable = xslt_proc.compile_stylesheet(stylesheet_text=xslt_content)
             xml_doc = proc.parse_xml(xml_text=xml_data_string)
             cadena = xslt_executable.transform_to_string(xdm_node=xml_doc)
-
             return Response(cadena.strip(), mimetype="text/plain")
 
     except Exception as e:
