@@ -1,44 +1,16 @@
 from flask import Flask, request, Response
 from lxml import etree
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from OpenSSL import crypto
+import base64
 import requests
 import os
-import requests
 import locale
 from saxonche import PySaxonProcessor
 
 app = Flask(__name__)
-
-"""@app.route("/cadena_original", methods=["POST"])
-def cadena_original():
-    try:
-        xml_data = request.data
-        # XSLT oficial del SAT CFDI 4.0
-        xslt_url = "https://www.sat.gob.mx/sitio_internet/cfd/4/cadenaoriginal_4_0/cadenaoriginal_4_0.xslt"
-        xslt_doc = etree.parse(requests.get(xslt_url).content)
-        transform = etree.XSLT(xslt_doc)
-
-        xml_doc = etree.fromstring(xml_data)
-        cadena = str(transform(xml_doc))
-
-        return Response(cadena, mimetype="text/plain")
-
-    except Exception as e:
-        return Response("Error: " + str(e), status=500, mimetype="text/plain")"""    
-print("🔄 Configurando locale...")
-try:
-    locale.setlocale(locale.LC_ALL, 'es_MX.UTF-8')
-    print("🎉 Locale configurado exitosamente: es_MX.UTF-8")
-except locale.Error as e:
-    print(f"⚠️  No se pudo configurar es_MX.UTF-8: {e}")
-    try:
-        locale.setlocale(locale.LC_ALL, 'C.UTF-8')
-        print("🎉 Locale configurado: C.UTF-8")
-    except locale.Error as e:
-        print(f"⚠️  No se pudo configurar C.UTF-8: {e}")
-        # Forzar variables de entorno como último recurso
-        os.environ['LANG'] = 'C.UTF-8'
-        os.environ['LC_ALL'] = 'C.UTF-8'
-        os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 @app.route("/cadena_original", methods=["POST"])
 def cadena_original_local():
@@ -81,7 +53,72 @@ def descargar_xslt_local():
             f.write(response.text)
     
     return local_path
+# =======================================================================
+# 💥 ENDPOINT 2: SELLADO DE LA CADENA ORIGINAL (NUEVO)
+# =======================================================================
+
+def sellar_cadena_sha256(cadena_original: str, key_path: str, password: str) -> str:
+    """
+    Firma criptográficamente la cadena original con la llave privada y devuelve
+    el sello codificado en Base64.
+    """
     
+    # 1. Leer y desencriptar la llave privada (.key)
+    # El archivo .key del SAT está en formato DER, y se convierte a PEM
+    
+    # Leer el archivo .key en formato DER (binario)
+    with open(key_path, "rb") as key_file:
+        key_der = key_file.read()
+    
+    # Convertir de DER a PEM (requiere pyOpenSSL)
+    key_pem_bytes = crypto.dump_privatekey(crypto.FILETYPE_PEM, 
+                                           crypto.load_privatekey(crypto.FILETYPE_ASN1, key_der, password.encode('utf-8')))
+
+    # Cargar la llave privada PEM desencriptada (requiere cryptography)
+    private_key = load_pem_private_key(
+        key_pem_bytes,
+        password=None, # La llave ya está desencriptada en PEM
+        backend=None
+    )
+
+    # 2. Generar el Hash y Firmar (SHA-256 + RSA)
+    signer = private_key.signer(
+        padding.PKCS1v15(), # El padding requerido por el SAT
+        hashes.SHA256()      # El algoritmo de hash requerido
+    )
+    
+    # La cadena original debe ser firmada en bytes
+    signer.update(cadena_original.encode('utf-8'))
+    signature = signer.finalize()
+    
+    # 3. Codificar la firma a Base64
+    sello_base64 = base64.b64encode(signature).decode('utf-8')
+    
+    return sello_base64
+
+
+@app.route("/sellar_cfdi", methods=["POST"])
+def sellar_cfdi():
+    """Recibe la cadena original y devuelve el sello digital."""
+    try:
+        data = request.get_json()
+        cadena_original = data.get("cadena_original")
+
+        if not cadena_original:
+            return jsonify({"error": "Falta 'cadena_original' en el cuerpo JSON."}), 400
+        
+        if not all([KEY_PATH, PASSWD]):
+             return jsonify({"error": "Faltan rutas o contraseña de la llave de sellado."}), 500
+
+        sello = sellar_cadena_sha256(cadena_original, KEY_PATH, PASSWD)
+        
+        return jsonify({"sello": sello})
+
+    except Exception as e:
+        # Añade logging en Render para depuración
+        print(f"Error en /sellar_cfdi: {str(e)}")
+        return jsonify({"error": f"Error al generar el sello: {str(e)}"}), 500
+        
 @app.route("/")
 def root():
     return "Servicio XSLT SAT activo ✅"
