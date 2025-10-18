@@ -2,3 +2,5 @@ flask
 lxml
 requests
 saxonche
+cryptography
+pyOpenSSL
