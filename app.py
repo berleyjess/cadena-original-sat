@@ -57,8 +57,10 @@ def cadena_original_local():
             
             # Decodificar el contenido asegurando que sea UTF-8
             xslt_content = xslt_bytes.decode('utf-8')
+
+            xslt_content_clean = xslt_content.replace('Ã±', 'ñ')
             
-            xslt_executable = xslt_proc.compile_stylesheet(stylesheet_text=xslt_content)
+            xslt_executable = xslt_proc.compile_stylesheet(stylesheet_text=xslt_content_clean)
             
             # ... (el resto del código sigue igual)
             xml_doc = proc.parse_xml(xml_text=xml_data_string)
