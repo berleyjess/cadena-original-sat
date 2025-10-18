@@ -34,7 +34,8 @@ def cadena_original():
             xslt_executable = xslt_proc.compile_stylesheet(stylesheet_text=requests.get(xslt_url).content)
 
             # Carga el XML desde los datos de la solicitud
-            xml_doc = proc.parse_xml(xml_text=xml_data.decode('utf-8'))
+            #xml_doc = proc.parse_xml(xml_text=xml_data.decode('utf-8'))
+            xml_doc = proc.parse_xml(xml_text=xml_data_string)
 
             # Realiza la transformación
             cadena = xslt_executable.transform_to_string(xdm_node=xml_doc)
