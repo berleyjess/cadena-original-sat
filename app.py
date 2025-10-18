@@ -24,6 +24,7 @@ def cadena_original():
 
 import os
 import requests
+import locale
 
 # Descargar el XSLT una vez al iniciar la aplicación
 def descargar_xslt_local():
@@ -36,6 +37,29 @@ def descargar_xslt_local():
             f.write(response.text)
     
     return local_path
+    
+def configure_locale():
+    try:
+        # Intentar configurar locale español México
+        locale.setlocale(locale.LC_ALL, 'es_MX.UTF-8')
+        print("✅ Locale configurado: es_MX.UTF-8")
+    except locale.Error:
+        try:
+            # Fallback a español genérico
+            locale.setlocale(locale.LC_ALL, 'es_ES.UTF-8')
+            print("✅ Locale configurado: es_ES.UTF-8")
+        except locale.Error:
+            try:
+                # Fallback a C.UTF-8 (usualmente disponible)
+                locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+                print("✅ Locale configurado: C.UTF-8")
+            except locale.Error:
+                # Último recurso: usar locale del sistema
+                os.environ['LANG'] = 'es_MX.UTF-8'
+                os.environ['LC_ALL'] = 'es_MX.UTF-8'
+                print("⚠️  Locale configurado via variables de entorno")
+
+configure_locale()
 
 @app.route("/cadena_original", methods=["POST"])
 def cadena_original_local():
