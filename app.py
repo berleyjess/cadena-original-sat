@@ -1,6 +1,9 @@
 from flask import Flask, request, Response
 from lxml import etree
 import requests
+import os
+import requests
+import locale
 from saxonche import PySaxonProcessor
 
 app = Flask(__name__)
@@ -20,46 +23,22 @@ def cadena_original():
         return Response(cadena, mimetype="text/plain")
 
     except Exception as e:
-        return Response("Error: " + str(e), status=500, mimetype="text/plain")"""
-
-import os
-import requests
-import locale
-
-# Descargar el XSLT una vez al iniciar la aplicación
-def descargar_xslt_local():
-    xslt_url = "https://www.sat.gob.mx/sitio_internet/cfd/4/cadenaoriginal_4_0/cadenaoriginal_4_0.xslt"
-    local_path = "cadenaoriginal_4_0.xslt"
-    
-    if not os.path.exists(local_path):
-        response = requests.get(xslt_url)
-        with open(local_path, 'w', encoding='utf-8') as f:
-            f.write(response.text)
-    
-    return local_path
-    
-def configure_locale():
+        return Response("Error: " + str(e), status=500, mimetype="text/plain")"""    
+print("🔄 Configurando locale...")
+try:
+    locale.setlocale(locale.LC_ALL, 'es_MX.UTF-8')
+    print("🎉 Locale configurado exitosamente: es_MX.UTF-8")
+except locale.Error as e:
+    print(f"⚠️  No se pudo configurar es_MX.UTF-8: {e}")
     try:
-        # Intentar configurar locale español México
-        locale.setlocale(locale.LC_ALL, 'es_MX.UTF-8')
-        print("✅ Locale configurado: es_MX.UTF-8")
-    except locale.Error:
-        try:
-            # Fallback a español genérico
-            locale.setlocale(locale.LC_ALL, 'es_ES.UTF-8')
-            print("✅ Locale configurado: es_ES.UTF-8")
-        except locale.Error:
-            try:
-                # Fallback a C.UTF-8 (usualmente disponible)
-                locale.setlocale(locale.LC_ALL, 'C.UTF-8')
-                print("✅ Locale configurado: C.UTF-8")
-            except locale.Error:
-                # Último recurso: usar locale del sistema
-                os.environ['LANG'] = 'es_MX.UTF-8'
-                os.environ['LC_ALL'] = 'es_MX.UTF-8'
-                print("⚠️  Locale configurado via variables de entorno")
-
-configure_locale()
+        locale.setlocale(locale.LC_ALL, 'C.UTF-8')
+        print("🎉 Locale configurado: C.UTF-8")
+    except locale.Error as e:
+        print(f"⚠️  No se pudo configurar C.UTF-8: {e}")
+        # Forzar variables de entorno como último recurso
+        os.environ['LANG'] = 'C.UTF-8'
+        os.environ['LC_ALL'] = 'C.UTF-8'
+        os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 @app.route("/cadena_original", methods=["POST"])
 def cadena_original_local():
@@ -86,6 +65,18 @@ def cadena_original_local():
     except Exception as e:
         return Response(f"Error: {str(e)}", status=500)
 
+# Descargar el XSLT una vez al iniciar la aplicación
+def descargar_xslt_local():
+    xslt_url = "https://www.sat.gob.mx/sitio_internet/cfd/4/cadenaoriginal_4_0/cadenaoriginal_4_0.xslt"
+    local_path = "cadenaoriginal_4_0.xslt"
+    
+    if not os.path.exists(local_path):
+        response = requests.get(xslt_url)
+        with open(local_path, 'w', encoding='utf-8') as f:
+            f.write(response.text)
+    
+    return local_path
+    
 @app.route("/")
 def root():
     return "Servicio XSLT SAT activo ✅"
