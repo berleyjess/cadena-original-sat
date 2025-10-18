@@ -11,7 +11,9 @@ import locale
 from saxonche import PySaxonProcessor
 
 app = Flask(__name__)
-
+# =======================================================================
+# 💥 ENDPOINT 1: CONVERTIR XML A CADENA ORIGINAL
+# =======================================================================
 @app.route("/cadena_original", methods=["POST"])
 def cadena_original_local():
     try:
@@ -53,6 +55,7 @@ def descargar_xslt_local():
             f.write(response.text)
     
     return local_path
+    
 # =======================================================================
 # 💥 ENDPOINT 2: SELLADO DE LA CADENA ORIGINAL (NUEVO)
 # =======================================================================
